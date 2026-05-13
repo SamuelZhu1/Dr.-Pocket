@@ -13,6 +13,14 @@ dist-ssr
 *.local
 .env
 
+# ML data and model weights — too large for git
+ml/data/
+ml/models/
+ml/venv/
+__pycache__/
+*.pth
+*.pyc
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
