@@ -237,9 +237,16 @@ function BodyModel({ onPartClick, onHover, onHoverEnd, interactive, selectedRegi
 useGLTF.preload('/sampleUntitled.glb')
 
 // ─── Annotation Panel ─────────────────────────────────────────────────────────
-function AnnotationPanel({ region, regionType, setRegionType, symptom, setSymptom, customText, setCustomText, onGetRemedies, loading, onClear, remedies, historyOpen, onScanSkin, scanResult, onClearScan }) {
+function AnnotationPanel({ region, regionType, setRegionType, symptom, setSymptom, customText, setCustomText, onGetRemedies, loading, onClear, remedies, historyOpen, onScanSkin, scanResult, onClearScan, isMobile }) {
   return (
-    <div style={{
+    <div style={isMobile ? {
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      width: '100%', maxHeight: '82dvh', overflowY: 'auto', zIndex: 200,
+      background: '#0a0a0a', borderTop: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: '20px 20px 0 0', padding: '20px 20px 36px',
+      boxShadow: '0 -20px 60px rgba(0,0,0,0.95)',
+      fontFamily: "'DM Sans', sans-serif",
+    } : {
       position: 'absolute', right: historyOpen ? '420px' : '320px', top: '50%', transform: 'translateY(-50%)',
       transition: 'right 0.35s cubic-bezier(0.4,0,0.2,1)',
       width: '460px', maxHeight: '84vh', overflowY: 'auto', zIndex: 200,
@@ -549,7 +556,7 @@ function SkinScanModal({ bodyRegion, onClose, onResult }) {
 const GLOBAL_STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,200;9..40,300;9..40,400;9..40,500&family=Inter:wght@300;400;500&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #000; }
+  html, body, #root { width: 100%; height: 100dvh; overflow: hidden; background: #000; }
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(18px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -620,6 +627,7 @@ export default function App() {
   })
   const [showSkinScan, setShowSkinScan] = useState(false)
   const [scanResult, setScanResult]     = useState(null)
+  const [isMobile, setIsMobile]         = useState(() => window.innerWidth < 768)
   const [jokeVisible, setJokeVisible] = useState(false)
   const [jokeFading, setJokeFading]   = useState(false)
   const [currentJoke, setCurrentJoke] = useState('')
@@ -627,6 +635,12 @@ export default function App() {
   const orbitRef    = useRef()
   const stopAnimRef = useRef(false)
   const [resetKey, setResetKey] = useState(0)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // ─── Firebase auth listener ────────────────────────────────────────────────
   useEffect(() => {
@@ -751,7 +765,7 @@ export default function App() {
     <>
       <style>{GLOBAL_STYLE}</style>
       <div style={{
-        width: '100vw', height: '100vh', background: '#000',
+        width: '100%', height: '100dvh', background: '#000',
         position: 'relative', overflow: 'hidden',
         fontFamily: "'DM Sans', sans-serif"
       }}>
@@ -759,7 +773,7 @@ export default function App() {
         {/* Content area — shifts left when history opens */}
         <div style={{
           position: 'absolute', inset: 0,
-          transform: showHistory ? 'translateX(-180px)' : 'translateX(0)',
+          transform: !isMobile && showHistory ? 'translateX(-180px)' : 'translateX(0)',
           transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
         }}>
           <Canvas
@@ -822,30 +836,36 @@ export default function App() {
                 }}
               >Log in</button>
               <div style={{
-                position: 'relative', zIndex: 2, paddingLeft: '16vw',
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                position: 'relative', zIndex: 2,
+                paddingLeft: isMobile ? '28px' : '16vw',
+                paddingRight: isMobile ? '28px' : 0,
+                display: 'flex', flexDirection: 'column',
+                alignItems: isMobile ? 'center' : 'flex-start',
+                textAlign: isMobile ? 'center' : 'left',
               }}>
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '12px',
+                  display: 'flex', alignItems: 'center', gap: isMobile ? '14px' : '20px', marginBottom: '12px',
                   animation: 'fadeUp 0.7s ease both', animationDelay: '0.1s',
                 }}>
-                  <img src="/Logo.png" alt="Dr. Pocket" style={{ height: '88px', width: '88px', objectFit: 'contain', flexShrink: 0 }} />
-                  <span style={{ fontSize: '104px', fontWeight: '300', color: '#fff', letterSpacing: '-3px', lineHeight: 1, whiteSpace: 'nowrap', textShadow: '0 2px 40px rgba(0,0,0,0.8)' }}>
+                  <img src="/Logo.png" alt="Dr. Pocket" style={{ height: isMobile ? '54px' : '88px', width: isMobile ? '54px' : '88px', objectFit: 'contain', flexShrink: 0 }} />
+                  <span style={{ fontSize: isMobile ? '54px' : '104px', fontWeight: '300', color: '#fff', letterSpacing: '-3px', lineHeight: 1, whiteSpace: 'nowrap', textShadow: '0 2px 40px rgba(0,0,0,0.8)' }}>
                     Dr. Pocket
                   </span>
                 </div>
-                <div style={{ paddingLeft: '108px', marginBottom: '36px', animation: 'fadeUp 0.7s ease both', animationDelay: '0.28s' }}>
-                  <span style={{ fontSize: '20.5px', fontWeight: '300', color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1px', whiteSpace: 'nowrap', textShadow: '0 2px 20px rgba(0,0,0,0.9)' }}>
+                <div style={{ paddingLeft: isMobile ? '0' : '108px', marginBottom: '36px', animation: 'fadeUp 0.7s ease both', animationDelay: '0.28s' }}>
+                  <span style={{ fontSize: isMobile ? '16px' : '20.5px', fontWeight: '300', color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1px', whiteSpace: isMobile ? 'normal' : 'nowrap', textShadow: '0 2px 20px rgba(0,0,0,0.9)' }}>
                     Pinpoint your pain. Get remedies instantly.
                   </span>
                 </div>
-                <div style={{ paddingLeft: '108px', display: 'flex', alignItems: 'center', gap: '10px', animation: 'fadeUp 0.7s ease both', animationDelay: '0.44s' }}>
+                <div style={{ paddingLeft: isMobile ? '0' : '108px', display: 'flex', alignItems: 'center', gap: '10px', animation: 'fadeUp 0.7s ease both', animationDelay: '0.44s' }}>
                   <span style={{ fontSize: '14px', fontWeight: '400', color: 'rgba(255,255,255,0.9)', letterSpacing: '3.5px', textTransform: 'uppercase', animation: 'blink 2.8s ease-in-out infinite', textShadow: '0 2px 12px rgba(0,0,0,0.9)' }}>
-                    Click anywhere to begin
+                    {isMobile ? 'Tap anywhere to begin' : 'Click anywhere to begin'}
                   </span>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.25, flexShrink: 0 }}>
-                    <path d="M2 7h10M8 3l4 4-4 4" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {!isMobile && (
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.25, flexShrink: 0 }}>
+                      <path d="M2 7h10M8 3l4 4-4 4" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
                 </div>
               </div>
             </div>
@@ -854,7 +874,7 @@ export default function App() {
           {/* App UI */}
           {!showLanding && (
             <>
-              {hoverRegion && !clickPoint && (
+              {hoverRegion && !clickPoint && !isMobile && (
                 <div style={{
                   position: 'fixed', left: tooltipPos.x + 14, top: tooltipPos.y - 38,
                   zIndex: 30, background: '#0a0a0a',
@@ -879,6 +899,7 @@ export default function App() {
                   onScanSkin={() => setShowSkinScan(true)}
                   scanResult={scanResult}
                   onClearScan={() => setScanResult(null)}
+                  isMobile={isMobile}
                 />
               )}
 
@@ -911,9 +932,9 @@ export default function App() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <div onClick={e => e.stopPropagation()} style={{
-                width: '400px', background: '#0a0a0a',
+                width: isMobile ? 'calc(100% - 32px)' : '400px', background: '#0a0a0a',
                 border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '24px', padding: '40px',
+                borderRadius: '24px', padding: isMobile ? '28px 24px' : '40px',
                 fontFamily: "'DM Sans', sans-serif",
                 boxShadow: '0 40px 100px rgba(0,0,0,0.9)',
               }}>
@@ -984,14 +1005,21 @@ export default function App() {
           }}>
             <img src="/Logo.png" alt="" style={{ height: '26px', width: '26px', objectFit: 'contain', pointerEvents: 'all' }} />
             <span style={{ fontSize: '17px', fontWeight: '400', color: 'white', letterSpacing: '-0.3px' }}>Dr. Pocket</span>
-            <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.12)', margin: '0 4px' }} />
-            <span style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>
-              Hover to explore · Click to select
-            </span>
+            {!isMobile && <>
+              <div style={{ width: '1px', height: '14px', background: 'rgba(255,255,255,0.12)', margin: '0 4px' }} />
+              <span style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>
+                Hover to explore · Click to select
+              </span>
+            </>}
             <div style={{ marginLeft: 'auto', pointerEvents: 'all', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {isMobile && (
+                <button onClick={() => { setShowHistory(h => !h); setHistoryHintSeen(true) }} style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit' }}>
+                  History
+                </button>
+              )}
               {user
                 ? <>
-                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: '300' }}>{user.email}</span>
+                    {!isMobile && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: '300' }}>{user.email}</span>}
                     <button onClick={logoutUser} style={{ padding: '5px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit' }}>Log out</button>
                   </>
                 : <button onClick={() => setShowLogin(true)} style={{ padding: '7px 18px', background: 'white', border: 'none', borderRadius: '999px', color: '#000', cursor: 'pointer', fontSize: '12px', fontWeight: '700', fontFamily: 'inherit' }}>Log in</button>
@@ -1004,7 +1032,7 @@ export default function App() {
         {!showLanding && (clickPoint || cameraModified) && (
           <div style={{
             position: 'absolute', bottom: '72px', left: '50%',
-            transform: showHistory ? 'translateX(calc(-50% - 180px))' : 'translateX(-50%)',
+            transform: !isMobile && showHistory ? 'translateX(calc(-50% - 180px))' : 'translateX(-50%)',
             transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
             zIndex: 300,
           }}>
@@ -1017,7 +1045,7 @@ export default function App() {
         )}
 
         {/* Edge tab */}
-        {!showLanding && (
+        {!showLanding && !isMobile && (
           <div style={{
             position: 'absolute', top: '50%', right: '360px',
             transform: showHistory ? 'translateY(-50%)' : 'translate(360px, -50%)',
@@ -1100,15 +1128,18 @@ export default function App() {
         {/* Medical history sidebar */}
         {!showLanding && (
           <div style={{
-            position: 'absolute', top: 0, right: 0, bottom: 0, width: '360px',
+            position: 'absolute', top: 0, right: 0, bottom: 0, width: isMobile ? '100%' : '360px',
             transform: showHistory ? 'translateX(0)' : 'translateX(100%)',
             transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
             background: '#0a0a0a', borderLeft: '1px solid rgba(255,255,255,0.07)',
             display: 'flex', flexDirection: 'column',
             fontFamily: "'DM Sans', sans-serif",
           }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '16px', fontWeight: '400', color: 'white', letterSpacing: '-0.3px' }}>Medical History</div>
+              {isMobile && (
+                <button onClick={() => setShowHistory(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.3)', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+              )}
               {history.length > 0 && (
                 <div style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>
                   {history.length} entr{history.length === 1 ? 'y' : 'ies'}
