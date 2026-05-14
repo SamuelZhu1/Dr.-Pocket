@@ -34,6 +34,11 @@ const JOKES = [
 ]
 
 const SEV_COLOR = { high: '#e74c3c', medium: '#f39c12', low: '#2ecc71' }
+const FSTATUS = {
+  better: { color: '#2ecc71', label: 'Better' },
+  same:   { color: '#f39c12', label: 'Same'   },
+  worse:  { color: '#e74c3c', label: 'Worse'  },
+}
 
 const labelStyle = { fontSize: '9px', fontWeight: '400', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '4px', fontFamily: "'DM Sans', sans-serif" }
 const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '7px 10px', color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontWeight: '300', fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box' }
@@ -674,6 +679,18 @@ export default function App() {
     setHoverRegion(null); setRegionType(null)
   }
 
+  const addFollowUp = (entryId, status) => {
+    setHistory(prev => {
+      const updated = prev.map(e =>
+        e.id === entryId
+          ? { ...e, followUps: [...(e.followUps || []), { timestamp: Date.now(), status }] }
+          : e
+      )
+      if (user) saveHistory(user.uid, updated)
+      return updated
+    })
+  }
+
   const handleClear = () => {
     stopAnimRef.current = false
     setClickPoint(null); setRegion(null); setZoomed(false)
@@ -753,7 +770,7 @@ export default function App() {
     setHistory(prev => {
       const updated = [{
         id: Date.now(), region, regionType, symptom, customText,
-        remedies: remedyText,
+        remedies: remedyText, followUps: [],
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
       }, ...prev]
       if (user) saveHistory(user.uid, updated)
@@ -1270,12 +1287,37 @@ export default function App() {
 
             {/* History entries */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+              {/* Pattern insights */}
+              {(() => {
+                const thirtyDaysAgo = Date.now() - 30 * 24 * 3600 * 1000
+                const counts = {}
+                history.filter(e => e.id > thirtyDaysAgo).forEach(e => {
+                  counts[e.region] = (counts[e.region] || 0) + 1
+                })
+                const insights = Object.entries(counts).filter(([, n]) => n >= 3)
+                if (!insights.length) return null
+                return (
+                  <div style={{ marginBottom: '16px', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '8px' }}>Patterns · Last 30 days</div>
+                    {insights.map(([region, count]) => (
+                      <div key={region} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '300', color: 'rgba(255,255,255,0.65)' }}>{region}</span>
+                        <span style={{ fontSize: '11px', fontWeight: '400', color: '#f39c12', padding: '2px 8px', borderRadius: '999px', background: 'rgba(243,156,18,0.1)', border: '1px solid rgba(243,156,18,0.2)' }}>{count}×</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+
               {history.length === 0 ? (
                 <div style={{ textAlign: 'center', marginTop: '60px', color: 'rgba(255,255,255,0.2)', fontSize: '13px', fontWeight: '300' }}>
                   Click a body part and get remedies<br />to start building your history.
                 </div>
               ) : history.map(entry => {
                 const isExpanded = expandedHistoryId === entry.id
+                const followUps = entry.followUps || []
+                const latestFollowUp = followUps[followUps.length - 1]
+                const needsCheckin = !followUps.length && Date.now() - entry.id > 3 * 24 * 3600 * 1000
                 return (
                   <div key={entry.id}
                     onMouseEnter={() => setHoveredHistoryRegion(entry.region)}
@@ -1288,7 +1330,18 @@ export default function App() {
                       transition: 'border-color 0.2s',
                     }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isExpanded ? '10px' : 0 }}>
-                      <div style={{ fontSize: '16px', fontWeight: '400', color: 'white', letterSpacing: '-0.3px' }}>{entry.region}</div>
+                      <div>
+                        <div style={{ fontSize: '16px', fontWeight: '400', color: 'white', letterSpacing: '-0.3px' }}>{entry.region}</div>
+                        {latestFollowUp && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: FSTATUS[latestFollowUp.status].color, flexShrink: 0 }} />
+                            <span style={{ fontSize: '10px', fontWeight: '300', color: FSTATUS[latestFollowUp.status].color }}>{FSTATUS[latestFollowUp.status].label}</span>
+                          </div>
+                        )}
+                        {!latestFollowUp && needsCheckin && (
+                          <div style={{ fontSize: '10px', fontWeight: '300', color: '#f39c12', marginTop: '4px' }}>Check in?</div>
+                        )}
+                      </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{ fontSize: '10px', fontWeight: '300', color: 'rgba(255,255,255,0.25)', whiteSpace: 'nowrap', marginTop: '2px' }}>{entry.date}</div>
                         <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', marginTop: '2px' }}>{isExpanded ? '▲' : '▼'}</div>
@@ -1310,6 +1363,40 @@ export default function App() {
                             <div style={{ fontSize: '12px', fontWeight: '300', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{entry.remedies}</div>
                           </>
                         )}
+
+                        {/* Progress check-in */}
+                        <div style={{ marginTop: '14px' }} onClick={e => e.stopPropagation()}>
+                          <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '12px' }} />
+                          <div style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '8px' }}>Progress</div>
+                          {followUps.length > 0 && (
+                            <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                              {followUps.map((fu, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: FSTATUS[fu.status].color, flexShrink: 0 }} />
+                                  <span style={{ fontSize: '12px', fontWeight: '300', color: FSTATUS[fu.status].color }}>{FSTATUS[fu.status].label}</span>
+                                  <span style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.2)' }}>
+                                    {new Date(fu.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.3)', marginBottom: '8px' }}>
+                            {followUps.length === 0 ? 'How is it feeling?' : 'Update progress'}
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            {['better', 'same', 'worse'].map(status => (
+                              <button key={status} onClick={() => addFollowUp(entry.id, status)} style={{
+                                flex: 1, padding: '8px 4px', borderRadius: '8px',
+                                fontSize: '11px', fontWeight: '400', fontFamily: "'DM Sans', sans-serif",
+                                cursor: 'pointer', letterSpacing: '0.5px', transition: 'background 0.15s',
+                                border: `1px solid ${FSTATUS[status].color}44`,
+                                background: latestFollowUp?.status === status ? `${FSTATUS[status].color}1a` : 'transparent',
+                                color: FSTATUS[status].color,
+                              }}>{FSTATUS[status].label}</button>
+                            ))}
+                          </div>
+                        </div>
                       </>
                     )}
                   </div>
