@@ -34,11 +34,8 @@ const JOKES = [
 ]
 
 const SEV_COLOR = { high: '#e74c3c', medium: '#f39c12', low: '#2ecc71' }
-const FSTATUS = {
-  better: { color: '#2ecc71', label: 'Better' },
-  same:   { color: '#f39c12', label: 'Same'   },
-  worse:  { color: '#e74c3c', label: 'Worse'  },
-}
+const ratingColor = r => r <= 3 ? '#2ecc71' : r <= 6 ? '#f39c12' : '#e74c3c'
+const ratingLabel = r => r <= 3 ? 'Mild' : r <= 6 ? 'Moderate' : 'Severe'
 
 const labelStyle = { fontSize: '9px', fontWeight: '400', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '4px', fontFamily: "'DM Sans', sans-serif" }
 const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '7px 10px', color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontWeight: '300', fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box' }
@@ -575,6 +572,9 @@ const GLOBAL_STYLE = `
     50% { transform: translateX(-5px); opacity: 0.85; }
   }
   select option { color: #000; background: #fff; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 3px; background: rgba(255,255,255,0.1); border-radius: 3px; outline: none; cursor: pointer; display: block; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: white; cursor: pointer; box-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+  input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: white; cursor: pointer; border: none; box-shadow: 0 1px 6px rgba(0,0,0,0.5); }
   @keyframes excitedBounce {
     0%, 65%, 100% { transform: translateY(0) rotate(0deg); }
     68%  { transform: translateY(-7px) rotate(-6deg); }
@@ -633,6 +633,7 @@ export default function App() {
   const [showSkinScan, setShowSkinScan] = useState(false)
   const [scanResult, setScanResult]     = useState(null)
   const [isMobile, setIsMobile]         = useState(() => window.innerWidth < 768)
+  const [draftRating, setDraftRating]   = useState(5)
   const [jokeVisible, setJokeVisible] = useState(false)
   const [jokeFading, setJokeFading]   = useState(false)
   const [currentJoke, setCurrentJoke] = useState('')
@@ -679,11 +680,23 @@ export default function App() {
     setHoverRegion(null); setRegionType(null)
   }
 
-  const addFollowUp = (entryId, status) => {
+  const addFollowUp = (entryId, rating) => {
     setHistory(prev => {
       const updated = prev.map(e =>
         e.id === entryId
-          ? { ...e, followUps: [...(e.followUps || []), { timestamp: Date.now(), status }] }
+          ? { ...e, followUps: [...(e.followUps || []), { timestamp: Date.now(), rating }] }
+          : e
+      )
+      if (user) saveHistory(user.uid, updated)
+      return updated
+    })
+  }
+
+  const deleteFollowUp = (entryId, index) => {
+    setHistory(prev => {
+      const updated = prev.map(e =>
+        e.id === entryId
+          ? { ...e, followUps: (e.followUps || []).filter((_, i) => i !== index) }
           : e
       )
       if (user) saveHistory(user.uid, updated)
@@ -1333,7 +1346,7 @@ export default function App() {
                   <div key={entry.id}
                     onMouseEnter={() => setHoveredHistoryRegion(entry.region)}
                     onMouseLeave={() => setHoveredHistoryRegion(null)}
-                    onClick={() => setExpandedHistoryId(isExpanded ? null : entry.id)}
+                    onClick={() => { setExpandedHistoryId(isExpanded ? null : entry.id); setDraftRating(5) }}
                     style={{
                       background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
                       padding: '16px', marginBottom: '12px', cursor: 'pointer',
@@ -1345,8 +1358,8 @@ export default function App() {
                         <div style={{ fontSize: '16px', fontWeight: '400', color: 'white', letterSpacing: '-0.3px' }}>{entry.region}</div>
                         {latestFollowUp && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
-                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: FSTATUS[latestFollowUp.status].color, flexShrink: 0 }} />
-                            <span style={{ fontSize: '10px', fontWeight: '300', color: FSTATUS[latestFollowUp.status].color }}>{FSTATUS[latestFollowUp.status].label}</span>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: ratingColor(latestFollowUp.rating), flexShrink: 0 }} />
+                            <span style={{ fontSize: '10px', fontWeight: '300', color: ratingColor(latestFollowUp.rating) }}>{latestFollowUp.rating}/10 — {ratingLabel(latestFollowUp.rating)}</span>
                           </div>
                         )}
                         {!latestFollowUp && needsCheckin && (
@@ -1378,35 +1391,70 @@ export default function App() {
                         {/* Progress check-in */}
                         <div style={{ marginTop: '14px' }} onClick={e => e.stopPropagation()}>
                           <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '12px' }} />
-                          <div style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '8px' }}>Progress</div>
+                          <div style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '10px' }}>Progress</div>
+
+                          {/* Line graph — 2+ check-ins */}
+                          {followUps.length >= 2 && (() => {
+                            const W = 280, H = 88, PAD = 24
+                            const times = followUps.map(f => f.timestamp)
+                            const minT = Math.min(...times), maxT = Math.max(...times)
+                            const xOf = t => PAD + (maxT === minT ? (W - PAD * 2) / 2 : (t - minT) / (maxT - minT) * (W - PAD * 2))
+                            const yOf = r => H - PAD - (r - 1) / 9 * (H - PAD * 2)
+                            const pts = followUps.map(f => `${xOf(f.timestamp)},${yOf(f.rating)}`).join(' ')
+                            return (
+                              <div style={{ marginBottom: '14px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', padding: '6px 2px 2px' }}>
+                                <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+                                  {[1, 4, 7, 10].map(r => (
+                                    <line key={r} x1={PAD} y1={yOf(r)} x2={W - PAD} y2={yOf(r)} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                                  ))}
+                                  <text x={PAD - 5} y={yOf(10) + 3} fontSize="7" fill="rgba(255,255,255,0.2)" textAnchor="end">10</text>
+                                  <text x={PAD - 5} y={yOf(1) + 3} fontSize="7" fill="rgba(255,255,255,0.2)" textAnchor="end">1</text>
+                                  <polyline points={pts} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" strokeLinejoin="round" />
+                                  {followUps.map((f, i) => (
+                                    <circle key={i} cx={xOf(f.timestamp)} cy={yOf(f.rating)} r="4" fill={ratingColor(f.rating)} stroke="#0a0a0a" strokeWidth="2" />
+                                  ))}
+                                </svg>
+                              </div>
+                            )
+                          })()}
+
+                          {/* Check-in list with delete */}
                           {followUps.length > 0 && (
-                            <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            <div style={{ marginBottom: '12px' }}>
                               {followUps.map((fu, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: FSTATUS[fu.status].color, flexShrink: 0 }} />
-                                  <span style={{ fontSize: '12px', fontWeight: '300', color: FSTATUS[fu.status].color }}>{FSTATUS[fu.status].label}</span>
-                                  <span style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.2)' }}>
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: i < followUps.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                                  <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: ratingColor(fu.rating), flexShrink: 0 }} />
+                                  <span style={{ fontSize: '13px', fontWeight: '300', color: ratingColor(fu.rating) }}>{fu.rating}/10</span>
+                                  <span style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.3)' }}>{ratingLabel(fu.rating)}</span>
+                                  <span style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.18)', marginLeft: 'auto' }}>
                                     {new Date(fu.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                   </span>
+                                  <button onClick={() => deleteFollowUp(entry.id, i)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.15)', cursor: 'pointer', fontSize: '13px', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>✕</button>
                                 </div>
                               ))}
                             </div>
                           )}
-                          <div style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.3)', marginBottom: '8px' }}>
-                            {followUps.length === 0 ? 'How is it feeling?' : 'Update progress'}
+
+                          {/* Slider */}
+                          <div style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.3)', marginBottom: '10px' }}>
+                            {followUps.length === 0 ? 'How is it feeling right now?' : 'Log another check-in'}
                           </div>
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            {['better', 'same', 'worse'].map(status => (
-                              <button key={status} onClick={() => addFollowUp(entry.id, status)} style={{
-                                flex: 1, padding: '8px 4px', borderRadius: '8px',
-                                fontSize: '11px', fontWeight: '400', fontFamily: "'DM Sans', sans-serif",
-                                cursor: 'pointer', letterSpacing: '0.5px', transition: 'background 0.15s',
-                                border: `1px solid ${FSTATUS[status].color}44`,
-                                background: latestFollowUp?.status === status ? `${FSTATUS[status].color}1a` : 'transparent',
-                                color: FSTATUS[status].color,
-                              }}>{FSTATUS[status].label}</button>
-                            ))}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.2)' }}>No pain</span>
+                            <span style={{ fontSize: '22px', fontWeight: '300', color: ratingColor(draftRating), letterSpacing: '-0.5px' }}>
+                              {draftRating}<span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>/10</span>
+                            </span>
+                            <span style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.2)' }}>Severe</span>
                           </div>
+                          <input type="range" min="1" max="10" value={draftRating} onChange={e => setDraftRating(Number(e.target.value))} style={{ marginBottom: '10px' }} />
+                          <button onClick={() => { addFollowUp(entry.id, draftRating); setDraftRating(5) }} style={{
+                            width: '100%', padding: '9px',
+                            background: `${ratingColor(draftRating)}18`,
+                            border: `1px solid ${ratingColor(draftRating)}44`,
+                            borderRadius: '8px', color: ratingColor(draftRating),
+                            fontSize: '11px', fontWeight: '400', letterSpacing: '1.5px',
+                            textTransform: 'uppercase', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer',
+                          }}>Log {draftRating}/10 — {ratingLabel(draftRating)}</button>
                         </div>
                       </>
                     )}
