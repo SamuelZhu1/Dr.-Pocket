@@ -753,18 +753,29 @@ export default function App() {
       : ''
     const prompt = `I have the following issue — ${parts.join(', ')}.${ctx ? ` Patient context: ${ctx}.` : ''}${scanCtx} Give me the best practical at-home remedies. Be specific and concise. Format as a numbered list.`
 
-    const res = await fetch('/api/remedies', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    })
-    if (!res.ok) {
-      setLoading(false)
-      setRemedies('Something went wrong. Please try again.')
-      return
+    const fallback = [
+      `1. Rest the affected area and avoid movements that aggravate it.`,
+      `2. Apply ice for the first 48 hours (15–20 min on, 15–20 min off) to limit swelling. Switch to heat after 48 hours to promote circulation.`,
+      `3. Keep the area elevated when possible to reduce inflammation.`,
+      `4. Take over-the-counter pain relief (ibuprofen or acetaminophen) as directed on the label if appropriate for you.`,
+      `5. Stay gently mobile — complete rest can slow recovery. Light stretching and short walks help maintain blood flow.`,
+      `6. Stay hydrated and prioritise sleep, both of which significantly accelerate tissue repair.`,
+      `7. If symptoms worsen, don't improve within 2 weeks, or are accompanied by fever, severe swelling, or numbness — see a healthcare professional.`,
+    ].join('\n')
+
+    let remedyText
+    try {
+      const res = await fetch('/api/remedies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      remedyText = data.text
+    } catch {
+      remedyText = fallback
     }
-    const data = await res.json()
-    const remedyText = data.text
     setRemedies(remedyText); setLoading(false)
 
     setHistory(prev => {
