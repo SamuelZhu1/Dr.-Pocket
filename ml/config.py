@@ -1,15 +1,15 @@
 from pathlib import Path
 
 BASE_DIR  = Path(__file__).parent
-DATA_DIR  = BASE_DIR / "data" / "HAM10000"
+DATA_DIR  = BASE_DIR / "data" / "Ham1000 Data"
 MODEL_DIR = BASE_DIR / "models"
 MODEL_PATH = MODEL_DIR / "skin_classifier.pth"
 
 IMG_SIZE      = 224
-BATCH_SIZE    = 32
-NUM_WORKERS   = 4
-EPOCHS        = 30
-FREEZE_EPOCHS = 5    # train only the head for this many epochs before unfreezing backbone
+BATCH_SIZE    = 64
+NUM_WORKERS   = 0
+EPOCHS        = 15
+FREEZE_EPOCHS = 3    # train only the head for this many epochs before unfreezing backbone
 LR_HEAD       = 1e-3
 LR_FULL       = 1e-4
 

@@ -110,7 +110,7 @@ def get_loaders(data_dir: Path = config.DATA_DIR):
     val_ds   = HAM10000Dataset(val_df,   transform=get_transforms(train=False))
     test_ds  = HAM10000Dataset(test_df,  transform=get_transforms(train=False))
 
-    loader_kwargs = dict(num_workers=config.NUM_WORKERS, pin_memory=True)
+    loader_kwargs = dict(num_workers=config.NUM_WORKERS, pin_memory=False)
     train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE,
                               sampler=_make_sampler(train_df), **loader_kwargs)
     val_loader   = DataLoader(val_ds,   batch_size=config.BATCH_SIZE,

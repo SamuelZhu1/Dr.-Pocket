@@ -238,8 +238,60 @@ function BodyModel({ onPartClick, onHover, onHoverEnd, interactive, selectedRegi
 
 useGLTF.preload('/sampleUntitled.glb')
 
+// ─── Emergency Card ───────────────────────────────────────────────────────────
+function EmergencyCard({ profile, onClose }) {
+  const hasData = profile.allergies || profile.bloodType || profile.medications || profile.conditions || profile.emergencyContact
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '20px', fontFamily: "'DM Sans', sans-serif",
+    }} onClick={onClose}>
+      <div style={{
+        width: '100%', maxWidth: '400px', background: '#0d0d0d',
+        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px',
+        overflow: 'hidden',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ background: '#c0392b', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 2v16M2 10h16" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+            <span style={{ fontSize: '15px', fontWeight: '600', color: 'white', letterSpacing: '-0.3px' }}>Emergency Card</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {profile.allergies && (
+            <div style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.35)', borderRadius: '12px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '9px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,120,100,0.8)', marginBottom: '6px' }}>Allergies</div>
+              <div style={{ fontSize: '14px', fontWeight: '300', color: 'rgba(255,255,255,0.9)', lineHeight: 1.5 }}>{profile.allergies}</div>
+            </div>
+          )}
+          {[
+            ['Blood Type', profile.bloodType],
+            ['Medications', profile.medications],
+            ['Conditions', profile.conditions],
+            ['Emergency Contact', profile.emergencyContact],
+          ].filter(([, v]) => v).map(([label, val]) => (
+            <div key={label}>
+              <div style={{ fontSize: '9px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '6px' }}>{label}</div>
+              <div style={{ fontSize: '14px', fontWeight: '300', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>{val}</div>
+            </div>
+          ))}
+          {!hasData && (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: 'rgba(255,255,255,0.25)', fontSize: '13px', fontWeight: '300', lineHeight: 1.7 }}>
+              Fill in your Health Profile to<br />populate your Emergency Card.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Annotation Panel ─────────────────────────────────────────────────────────
-function AnnotationPanel({ region, regionType, setRegionType, symptom, setSymptom, customText, setCustomText, onGetRemedies, loading, onClear, remedies, historyOpen, onScanSkin, scanResult, onClearScan, isMobile }) {
+function AnnotationPanel({ region, regionType, setRegionType, symptom, setSymptom, customText, setCustomText, onGetRemedies, loading, onClear, remedies, historyOpen, onScanSkin, scanResult, onClearScan, isMobile, initialRating, setInitialRating }) {
   return (
     <div style={isMobile ? {
       position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -342,6 +394,31 @@ function AnnotationPanel({ region, regionType, setRegionType, symptom, setSympto
         )}
       </div>
 
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>
+            Initial Pain <span style={{ textTransform: 'none', letterSpacing: 0, color: 'rgba(255,255,255,0.18)' }}>· optional</span>
+          </div>
+          {initialRating !== null && (
+            <button onClick={() => setInitialRating(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.2)', cursor: 'pointer', fontSize: '11px', padding: 0, fontFamily: 'inherit' }}>clear</button>
+          )}
+        </div>
+        {initialRating === null ? (
+          <button onClick={() => setInitialRating(5)} style={{ width: '100%', padding: '9px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>+ Rate initial pain</button>
+        ) : (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.2)' }}>No pain</span>
+              <span style={{ fontSize: '22px', fontWeight: '300', color: ratingColor(initialRating), letterSpacing: '-0.5px' }}>
+                {initialRating}<span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>/10</span>
+              </span>
+              <span style={{ fontSize: '11px', fontWeight: '300', color: 'rgba(255,255,255,0.2)' }}>Severe</span>
+            </div>
+            <input type="range" min="1" max="10" value={initialRating} onChange={e => setInitialRating(Number(e.target.value))} style={{ marginBottom: '4px' }} />
+          </>
+        )}
+      </div>
+
       <button onClick={onGetRemedies} disabled={(!symptom && !customText) || loading}
         style={{
           width: '100%', padding: '11px', background: 'rgba(255,255,255,0.08)',
@@ -371,6 +448,7 @@ function AnnotationPanel({ region, regionType, setRegionType, symptom, setSympto
 function SkinScanModal({ bodyRegion, onClose, onResult }) {
   const videoRef  = useRef(null)
   const streamRef = useRef(null)
+  const fileRef   = useRef(null)
   const [phase, setPhase]             = useState('camera') // 'camera' | 'preview' | 'loading' | 'result'
   const [capturedB64, setCapturedB64] = useState(null)
   const [result, setResult]           = useState(null)
@@ -402,6 +480,24 @@ function SkinScanModal({ bodyRegion, onClose, onResult }) {
     streamRef.current?.getTracks().forEach(t => t.stop())
     setCapturedB64(canvas.toDataURL('image/jpeg', 0.92).split(',')[1])
     setPhase('preview')
+  }
+
+  function uploadFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const size = Math.min(img.width, img.height)
+      const canvas = document.createElement('canvas')
+      canvas.width = canvas.height = 1024
+      canvas.getContext('2d').drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 1024, 1024)
+      URL.revokeObjectURL(url)
+      streamRef.current?.getTracks().forEach(t => t.stop())
+      setCapturedB64(canvas.toDataURL('image/jpeg', 0.92).split(',')[1])
+      setPhase('preview')
+    }
+    img.src = url
   }
 
   async function analyze() {
@@ -500,6 +596,7 @@ function SkinScanModal({ bodyRegion, onClose, onResult }) {
                 }}>{result.severity}</span>
               </div>
 
+              {(<>
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>Confidence</span>
@@ -514,11 +611,13 @@ function SkinScanModal({ bodyRegion, onClose, onResult }) {
               {result.top3.map((t, i) => (
                 <div key={t.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                   <span style={{ fontSize: '13px', fontWeight: '300', color: i === 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.35)' }}>{t.label}</span>
-                  <span style={{ fontSize: '12px', fontWeight: '300', color: i === 0 ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.25)' }}>{Math.round(t.prob * 100)}%</span>
+                  <span style={{ fontSize: '12px', fontWeight: '300', color: i === 0 ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.25)' }}>{Math.round(t.probability * 100)}%</span>
                 </div>
               ))}
+              </>)}
             </div>
           )}
+
 
           {/* Error */}
           {error && (
@@ -528,17 +627,24 @@ function SkinScanModal({ bodyRegion, onClose, onResult }) {
           )}
 
           {/* Action buttons */}
+          <input ref={fileRef} type="file" accept="image/*" onChange={uploadFile} style={{ display: 'none' }} />
           <div style={{ display: 'flex', gap: '8px' }}>
-            {phase === 'camera' && !error && (
+            {phase === 'camera' && !error && (<>
+              <button onClick={() => fileRef.current.click()} style={{ flex: 1, padding: '13px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}>
+                Upload image
+              </button>
               <button onClick={capture} style={{ flex: 1, padding: '13px', background: 'white', color: '#000', border: 'none', borderRadius: '12px', fontSize: '13px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}>
                 Capture
               </button>
-            )}
-            {phase === 'camera' && error && (
+            </>)}
+            {phase === 'camera' && error && (<>
+              <button onClick={() => fileRef.current.click()} style={{ flex: 1, padding: '13px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}>
+                Upload image
+              </button>
               <button onClick={onClose} style={{ flex: 1, padding: '13px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}>
                 Close
               </button>
-            )}
+            </>)}
             {phase === 'preview' && (<>
               <button onClick={retake} style={{ flex: 1, padding: '13px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}>Retake</button>
               <button onClick={analyze} style={{ flex: 1, padding: '13px', background: 'white', color: '#000', border: 'none', borderRadius: '12px', fontSize: '13px', fontWeight: '600', fontFamily: "'DM Sans', sans-serif", cursor: 'pointer' }}>Analyze</button>
@@ -624,16 +730,21 @@ export default function App() {
     dob: '', sex: '', height: '', weight: '',
     conditions: '', medications: '', allergies: '',
     activityLevel: '', smoking: '', familyHistory: '',
+    bloodType: '', emergencyContact: '',
   })
   const [profile, setProfile] = useState({
     dob: '', sex: '', height: '', weight: '',
     conditions: '', medications: '', allergies: '',
     activityLevel: '', smoking: '', familyHistory: '',
+    bloodType: '', emergencyContact: '',
   })
   const [showSkinScan, setShowSkinScan] = useState(false)
   const [scanResult, setScanResult]     = useState(null)
   const [isMobile, setIsMobile]         = useState(() => window.innerWidth < 768)
   const [draftRating, setDraftRating]   = useState(5)
+  const [initialRating, setInitialRating] = useState(null)
+  const [historySearch, setHistorySearch] = useState('')
+  const [showEmergencyCard, setShowEmergencyCard] = useState(false)
   const [jokeVisible, setJokeVisible] = useState(false)
   const [jokeFading, setJokeFading]   = useState(false)
   const [currentJoke, setCurrentJoke] = useState('')
@@ -661,7 +772,7 @@ export default function App() {
       } else {
         setUser(null)
         setHistory([])
-        setProfile({ dob: '', sex: '', height: '', weight: '', conditions: '', medications: '', allergies: '', activityLevel: '', smoking: '', familyHistory: '' })
+        setProfile({ dob: '', sex: '', height: '', weight: '', conditions: '', medications: '', allergies: '', activityLevel: '', smoking: '', familyHistory: '', bloodType: '', emergencyContact: '' })
       }
       setAuthLoading(false)
     })
@@ -709,7 +820,7 @@ export default function App() {
     setClickPoint(null); setRegion(null); setZoomed(false)
     setSymptom(null); setCustomText(''); setRemedies(null)
     setRegionType(null); setCameraModified(false)
-    setScanResult(null)
+    setScanResult(null); setInitialRating(null)
     setResetKey(k => k + 1)
   }
 
@@ -791,10 +902,13 @@ export default function App() {
     }
     setRemedies(remedyText); setLoading(false)
 
+    const snapInitial = initialRating
+    setInitialRating(null)
     setHistory(prev => {
       const updated = [{
         id: Date.now(), region, regionType, symptom, customText,
         remedies: remedyText, followUps: [],
+        initialRating: snapInitial,
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
       }, ...prev]
       if (user) saveHistory(user.uid, updated)
@@ -941,6 +1055,7 @@ export default function App() {
                   scanResult={scanResult}
                   onClearScan={() => setScanResult(null)}
                   isMobile={isMobile}
+                  initialRating={initialRating} setInitialRating={setInitialRating}
                 />
               )}
 
@@ -1061,6 +1176,11 @@ export default function App() {
               {user
                 ? <>
                     {!isMobile && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: '300' }}>{user.email}</span>}
+                    <button onClick={() => setShowEmergencyCard(true)} style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#c0392b', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title="Emergency Card">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M7 1v12M1 7h12" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+                      </svg>
+                    </button>
                     <button onClick={logoutUser} style={{ padding: '5px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit' }}>Log out</button>
                   </>
                 : <button onClick={() => setShowLogin(true)} style={{ padding: '7px 18px', background: 'white', border: 'none', borderRadius: '999px', color: '#000', cursor: 'pointer', fontSize: '12px', fontWeight: '700', fontFamily: 'inherit' }}>Log in</button>
@@ -1166,6 +1286,11 @@ export default function App() {
           />
         )}
 
+        {/* Emergency card */}
+        {showEmergencyCard && (
+          <EmergencyCard profile={profile} onClose={() => setShowEmergencyCard(false)} />
+        )}
+
         {/* Medical history sidebar */}
         {!showLanding && (
           <div style={{
@@ -1251,6 +1376,19 @@ export default function App() {
                               </select>
                             </div>
                           </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={labelStyle}>Blood Type</div>
+                              <select value={profileDraft.bloodType} onChange={e => setProfileDraft(p => ({...p, bloodType: e.target.value}))} style={inputStyle}>
+                                <option value="">—</option>
+                                {['A+','A−','B+','B−','AB+','AB−','O+','O−'].map(t => <option key={t}>{t}</option>)}
+                              </select>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={labelStyle}>Emergency Contact</div>
+                              <input placeholder="Name & phone" value={profileDraft.emergencyContact} onChange={e => setProfileDraft(p => ({...p, emergencyContact: e.target.value}))} style={inputStyle} />
+                            </div>
+                          </div>
                           {[
                             ['conditions','Pre-existing Conditions','e.g. diabetes, hypertension…'],
                             ['medications','Current Medications','e.g. metformin, ibuprofen…'],
@@ -1285,6 +1423,7 @@ export default function App() {
                               ['Date of Birth', profile.dob], ['Sex', profile.sex],
                               ['Height', profile.height], ['Weight', profile.weight],
                               ['Activity Level', profile.activityLevel], ['Smoking', profile.smoking],
+                              ['Blood Type', profile.bloodType], ['Emergency Contact', profile.emergencyContact],
                               ['Pre-existing Conditions', profile.conditions],
                               ['Current Medications', profile.medications],
                               ['Allergies', profile.allergies], ['Family History', profile.familyHistory],
@@ -1311,6 +1450,22 @@ export default function App() {
 
             {/* History entries */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+              {/* Search */}
+              {history.length > 0 && (
+                <div style={{ marginBottom: '14px', position: 'relative' }}>
+                  <input
+                    value={historySearch}
+                    onChange={e => setHistorySearch(e.target.value)}
+                    placeholder="Search by region…"
+                    style={{ ...inputStyle, paddingLeft: '32px' }}
+                  />
+                  <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <circle cx="5" cy="5" r="3.5" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2"/>
+                    <path d="M8 8l2 2" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                </div>
+              )}
+
               {/* Pattern insights */}
               {(() => {
                 const thirtyDaysAgo = Date.now() - 30 * 24 * 3600 * 1000
@@ -1337,7 +1492,7 @@ export default function App() {
                 <div style={{ textAlign: 'center', marginTop: '60px', color: 'rgba(255,255,255,0.2)', fontSize: '13px', fontWeight: '300' }}>
                   Click a body part and get remedies<br />to start building your history.
                 </div>
-              ) : history.map(entry => {
+              ) : history.filter(e => !historySearch || e.region?.toLowerCase().includes(historySearch.toLowerCase())).map(entry => {
                 const isExpanded = expandedHistoryId === entry.id
                 const followUps = entry.followUps || []
                 const latestFollowUp = followUps[followUps.length - 1]
@@ -1393,14 +1548,19 @@ export default function App() {
                           <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '12px' }} />
                           <div style={{ fontSize: '10px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: '10px' }}>Progress</div>
 
-                          {/* Line graph — 2+ check-ins */}
-                          {followUps.length >= 2 && (() => {
+                          {/* Line graph — 2+ points (initial rating counts as first point) */}
+                          {(() => {
+                            const allPoints = [
+                              ...(entry.initialRating != null ? [{ timestamp: entry.id, rating: entry.initialRating }] : []),
+                              ...followUps,
+                            ]
+                            if (allPoints.length < 2) return null
                             const W = 280, H = 88, PAD = 24
-                            const times = followUps.map(f => f.timestamp)
+                            const times = allPoints.map(f => f.timestamp)
                             const minT = Math.min(...times), maxT = Math.max(...times)
                             const xOf = t => PAD + (maxT === minT ? (W - PAD * 2) / 2 : (t - minT) / (maxT - minT) * (W - PAD * 2))
                             const yOf = r => H - PAD - (r - 1) / 9 * (H - PAD * 2)
-                            const pts = followUps.map(f => `${xOf(f.timestamp)},${yOf(f.rating)}`).join(' ')
+                            const pts = allPoints.map(f => `${xOf(f.timestamp)},${yOf(f.rating)}`).join(' ')
                             return (
                               <div style={{ marginBottom: '14px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', padding: '6px 2px 2px' }}>
                                 <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
@@ -1410,7 +1570,7 @@ export default function App() {
                                   <text x={PAD - 5} y={yOf(10) + 3} fontSize="7" fill="rgba(255,255,255,0.2)" textAnchor="end">10</text>
                                   <text x={PAD - 5} y={yOf(1) + 3} fontSize="7" fill="rgba(255,255,255,0.2)" textAnchor="end">1</text>
                                   <polyline points={pts} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" strokeLinejoin="round" />
-                                  {followUps.map((f, i) => (
+                                  {allPoints.map((f, i) => (
                                     <circle key={i} cx={xOf(f.timestamp)} cy={yOf(f.rating)} r="4" fill={ratingColor(f.rating)} stroke="#0a0a0a" strokeWidth="2" />
                                   ))}
                                 </svg>
